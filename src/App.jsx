@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { supabase } from './supabase'
 import Dashboard from './Components/dashboard'
 import NewApplication from './Components/NewApplication'
 
@@ -8,8 +7,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* Navigation */}
       <nav className="bg-blue-800 text-white px-6 py-4 shadow-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold">DNO Application Manager</h1>
@@ -38,7 +35,6 @@ function App() {
         </div>
       </nav>
 
-      {/* Page Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         {currentPage === 'dashboard' && (
           <Dashboard setCurrentPage={setCurrentPage} />
@@ -47,7 +43,6 @@ function App() {
           <NewApplication setCurrentPage={setCurrentPage} />
         )}
       </main>
-
     </div>
   )
 }
