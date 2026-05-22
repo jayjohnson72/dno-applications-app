@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
+import EditApplication from './EditApplication'
 
 const statusColours = {
   draft: 'bg-gray-100 text-gray-700',
@@ -19,6 +20,7 @@ export default function Dashboard({ setCurrentPage }) {
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [editing, setEditing] = useState(null)
 
   async function fetchApplications() {
     setLoading(true)
@@ -39,6 +41,11 @@ export default function Dashboard({ setCurrentPage }) {
     fetchApplications()
   }, [])
 
+  function handleSaved() {
+    setEditing(null)
+    fetchApplications()
+  }
+
   const counts = {
     total: applications.length,
     draft: applications.filter(a => a.status === 'draft').length,
@@ -48,6 +55,14 @@ export default function Dashboard({ setCurrentPage }) {
 
   return (
     <div>
+      {editing && (
+        <EditApplication
+          application={editing}
+          onClose={() => setEditing(null)}
+          onSaved={handleSaved}
+        />
+      )}
+
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
         <div className="flex gap-3">
@@ -69,8 +84,6 @@ export default function Dashboard({ setCurrentPage }) {
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           <strong>Database error:</strong> {error}
-          <br />
-          <span className="text-red-500 text-xs">Check that the &quot;applications&quot; table exists in Supabase with the correct columns.</span>
         </div>
       )}
 
@@ -110,6 +123,7 @@ export default function Dashboard({ setCurrentPage }) {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Address</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +139,14 @@ export default function Dashboard({ setCurrentPage }) {
                   </td>
                   <td className="px-4 py-3 text-gray-500">
                     {new Date(app.created_at).toLocaleDateString('en-GB')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setEditing(app)}
+                      className="text-blue-600 hover:text-blue-800 font-medium text-xs px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-50 transition"
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}
