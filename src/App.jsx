@@ -4,6 +4,12 @@ import NewApplication from './Components/NewApplication'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
+  const [dashboardKey, setDashboardKey] = useState(0)
+
+  function goToDashboard() {
+    setDashboardKey(k => k + 1)
+    setCurrentPage('dashboard')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -12,7 +18,7 @@ function App() {
           <h1 className="text-xl font-bold">DNO Application Manager</h1>
           <div className="flex gap-4">
             <button
-              onClick={() => setCurrentPage('dashboard')}
+              onClick={goToDashboard}
               className={`px-4 py-2 rounded-lg font-medium transition ${
                 currentPage === 'dashboard'
                   ? 'bg-white text-blue-800'
@@ -37,10 +43,10 @@ function App() {
 
       <main className="max-w-6xl mx-auto px-6 py-8">
         {currentPage === 'dashboard' && (
-          <Dashboard setCurrentPage={setCurrentPage} />
+          <Dashboard key={dashboardKey} setCurrentPage={setCurrentPage} />
         )}
         {currentPage === 'new' && (
-          <NewApplication setCurrentPage={setCurrentPage} />
+          <NewApplication setCurrentPage={goToDashboard} />
         )}
       </main>
     </div>

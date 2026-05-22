@@ -18,16 +18,24 @@ const typeLabels = {
 export default function Dashboard({ setCurrentPage }) {
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  async function fetchApplications() {
+    setLoading(true)
+    setError(null)
+    const { data, error } = await supabase
+      .from('applications')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) {
+      setError(error.message)
+    } else {
+      setApplications(data)
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
-    async function fetchApplications() {
-      const { data, error } = await supabase
-        .from('applications')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (!error) setApplications(data)
-      setLoading(false)
-    }
     fetchApplications()
   }, [])
 
@@ -42,15 +50,30 @@ export default function Dashboard({ setCurrentPage }) {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-        <button
-          onClick={() => setCurrentPage('new')}
-          className="bg-blue-700 text-white px-5 py-2 rounded-lg hover:bg-blue-800 transition font-medium"
-        >
-          + New Application
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchApplications}
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={() => setCurrentPage('new')}
+            className="bg-blue-700 text-white px-5 py-2 rounded-lg hover:bg-blue-800 transition font-medium"
+          >
+            + New Application
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <strong>Database error:</strong> {error}
+          <br />
+          <span className="text-red-500 text-xs">Check that the &quot;applications&quot; table exists in Supabase with the correct columns.</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total', value: counts.total, colour: 'bg-blue-50 text-blue-800' },
@@ -65,10 +88,9 @@ export default function Dashboard({ setCurrentPage }) {
         ))}
       </div>
 
-      {/* Applications list */}
       {loading ? (
         <p className="text-gray-500">Loading applications...</p>
-      ) : applications.length === 0 ? (
+      ) : error ? null : applications.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
           <p className="text-gray-400 text-lg mb-4">No applications yet</p>
           <button
