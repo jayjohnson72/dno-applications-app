@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "../supabase";
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../supabase'
+
 const DNO_MAP = {BB:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},AB:{id:"10",name:"SSEN Transmission",region:"North of Scotland",emergency:"0345 026 2554"},AL:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},B:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},BA:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},BD:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},BH:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},BL:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},BN:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},BS:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},CA:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},CB:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},CF:{id:"22",name:"Western Power Distribution",region:"South Wales",emergency:"0800 052 0400"},CH:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},CM:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},CR:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},CV:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},CW:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},DA:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},DD:{id:"10",name:"SSEN Transmission",region:"North of Scotland",emergency:"0345 026 2554"},DE:{id:"24",name:"Western Power Distribution",region:"East Midlands",emergency:"0800 096 3080"},DG:{id:"18",name:"SP Energy Networks",region:"Southern Scotland",emergency:"0330 10 10 444"},DH:{id:"17",name:"Northern Powergrid",region:"North East",emergency:"0800 011 3332"},DL:{id:"17",name:"Northern Powergrid",region:"North East",emergency:"0800 011 3332"},DN:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},DT:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},DY:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},E:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},EC:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},EH:{id:"19",name:"SP Energy Networks",region:"Central Scotland",emergency:"0330 10 10 444"},EN:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},EX:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},FK:{id:"19",name:"SP Energy Networks",region:"Central Scotland",emergency:"0330 10 10 444"},FY:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},G:{id:"19",name:"SP Energy Networks",region:"Central Scotland",emergency:"0330 10 10 444"},GL:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},GU:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},HA:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},HD:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},HG:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},HP:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},HR:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},HU:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},HX:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},IG:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},IP:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},IV:{id:"10",name:"SSEN Transmission",region:"North of Scotland",emergency:"0345 026 2554"},KA:{id:"18",name:"SP Energy Networks",region:"Southern Scotland",emergency:"0330 10 10 444"},KT:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},KW:{id:"10",name:"SSEN Transmission",region:"North of Scotland",emergency:"0345 026 2554"},KY:{id:"19",name:"SP Energy Networks",region:"Central Scotland",emergency:"0330 10 10 444"},L:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},LA:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},LD:{id:"22",name:"Western Power Distribution",region:"South Wales",emergency:"0800 052 0400"},LE:{id:"24",name:"Western Power Distribution",region:"East Midlands",emergency:"0800 096 3080"},LL:{id:"12",name:"SP Manweb",region:"North Wales",emergency:"0330 10 10 444"},LN:{id:"24",name:"Western Power Distribution",region:"East Midlands",emergency:"0800 096 3080"},LS:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},LU:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},M:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},ME:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},MK:{id:"24",name:"Western Power Distribution",region:"East Midlands",emergency:"0800 096 3080"},ML:{id:"19",name:"SP Energy Networks",region:"Central Scotland",emergency:"0330 10 10 444"},N:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},NE:{id:"17",name:"Northern Powergrid",region:"North East",emergency:"0800 011 3332"},NG:{id:"24",name:"Western Power Distribution",region:"East Midlands",emergency:"0800 096 3080"},NN:{id:"24",name:"Western Power Distribution",region:"East Midlands",emergency:"0800 096 3080"},NP:{id:"22",name:"Western Power Distribution",region:"South Wales",emergency:"0800 052 0400"},NR:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},NW:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},OL:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},OX:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},PA:{id:"19",name:"SP Energy Networks",region:"Central Scotland",emergency:"0330 10 10 444"},PE:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},PH:{id:"10",name:"SSEN Transmission",region:"North of Scotland",emergency:"0345 026 2554"},PL:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},PO:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},PR:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},RG:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},RH:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},RM:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},S:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},SA:{id:"22",name:"Western Power Distribution",region:"South Wales",emergency:"0800 052 0400"},SE:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},SG:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},SK:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},SL:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},SM:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},SN:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},SO:{id:"11",name:"SSEN Distribution",region:"South of England",emergency:"0800 048 3515"},SR:{id:"17",name:"Northern Powergrid",region:"North East",emergency:"0800 011 3332"},SS:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},ST:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},SW:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},SY:{id:"12",name:"SP Manweb",region:"Mid Wales",emergency:"0330 10 10 444"},TA:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},TD:{id:"18",name:"SP Energy Networks",region:"Southern Scotland",emergency:"0330 10 10 444"},TF:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},TN:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},TQ:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},TR:{id:"23",name:"Western Power Distribution",region:"South West",emergency:"0800 365 900"},TS:{id:"17",name:"Northern Powergrid",region:"North East",emergency:"0800 011 3332"},TW:{id:"14",name:"UK Power Networks",region:"South East",emergency:"0800 029 4285"},UB:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},W:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},WA:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},WC:{id:"13",name:"UK Power Networks",region:"London",emergency:"0800 029 4285"},WD:{id:"15",name:"UK Power Networks",region:"East of England",emergency:"0800 029 4285"},WF:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},WN:{id:"21",name:"Electricity North West",region:"North West England",emergency:"0800 195 4141"},WR:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},WS:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},WV:{id:"20",name:"Western Power Distribution",region:"West Midlands",emergency:"0800 096 3080"},YO:{id:"16",name:"Northern Powergrid",region:"Yorkshire",emergency:"0800 011 3332"},ZE:{id:"10",name:"SSEN Transmission",region:"North of Scotland",emergency:"0345 026 2554"}}
 
 function lookupDNO(postcode) {
@@ -20,7 +21,9 @@ function validateMPAN(mpan) {
   for (let i = 0; i < 12; i++) sum += parseInt(digits[8+i]) * primes[i]
   const expected = sum % 11 % 10
   return { valid: expected === parseInt(digits[20]), error: expected !== parseInt(digits[20]) ? 'Check digit invalid' : null }
-}export default function NewApplication({ setCurrentPage }) {
+}
+
+export default function NewApplication({ setCurrentPage, demoMode }) {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [dno, setDno] = useState(null)
@@ -60,6 +63,10 @@ function validateMPAN(mpan) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (demoMode) {
+      alert('Demo mode — no data will be saved. Exit demo mode to save real applications.')
+      return
+    }
     if (dnoStatus !== 'found') {
       alert('Please enter a valid postcode so we can identify the DNO.')
       return
@@ -74,7 +81,7 @@ function validateMPAN(mpan) {
         dno_emergency: dno.emergency,
       }])
     setLoading(false)
-   if (!error) {
+    if (!error) {
       try {
         await supabase.functions.invoke('send-email', {
           body: {
@@ -98,7 +105,8 @@ function validateMPAN(mpan) {
       alert('Error saving application: ' + error.message)
     }
   }
- if (success) {
+
+  if (success) {
     return (
       <div className="text-center py-16">
         <div className="text-green-500 text-5xl mb-4">✓</div>
@@ -111,8 +119,14 @@ function validateMPAN(mpan) {
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">New DNO Application</h2>
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
 
+      {demoMode && (
+        <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 text-sm text-orange-700">
+          Demo mode — filling in this form will not save any data.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Application Type</label>
           <select name="type" value={form.type} onChange={handleChange}
@@ -137,7 +151,8 @@ function validateMPAN(mpan) {
             placeholder="e.g. 123 Main Street, Burnley" required
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-  <div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
           <div className="relative">
             <input type="text" name="postcode" value={form.postcode} onChange={handleChange}
@@ -180,17 +195,16 @@ function validateMPAN(mpan) {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={loading || dnoStatus !== 'found'}
+          <button type="submit" disabled={loading || (!demoMode && dnoStatus !== 'found')}
             className="flex-1 bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition disabled:opacity-50">
-            {loading ? 'Saving...' : 'Save Application'}
+            {loading ? 'Saving...' : demoMode ? 'Save Application (Demo)' : 'Save Application'}
           </button>
           <button type="button" onClick={() => setCurrentPage('dashboard')}
             className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition">
             Cancel
           </button>
         </div>
-
       </form>
     </div>
   )
-}      
+}
