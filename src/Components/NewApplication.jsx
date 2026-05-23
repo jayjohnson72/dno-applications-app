@@ -74,7 +74,24 @@ function validateMPAN(mpan) {
         dno_emergency: dno.emergency,
       }])
     setLoading(false)
-    if (!error) {
+   if (!error) {
+      try {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            customer_name: form.customer_name,
+            site_address: form.site_address,
+            postcode: form.postcode,
+            mpan: form.mpan,
+            type: form.type,
+            status: form.status,
+            dno_name: dno?.name,
+            dno_region: dno?.region,
+            dno_emergency: dno?.emergency,
+          }
+        })
+      } catch (e) {
+        console.log('Email error:', e)
+      }
       setSuccess(true)
       setTimeout(() => setCurrentPage('dashboard'), 1500)
     } else {
