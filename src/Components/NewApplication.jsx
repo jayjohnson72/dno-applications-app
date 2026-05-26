@@ -46,8 +46,7 @@ export default function NewApplication({ setCurrentPage, demoMode }) {
     setDnoStatus('loading')
     postcodeTimer.current = setTimeout(() => {
       const found = lookupDNO(pc)
-      if (found) { setDno(found); setDnoStatus('found') }
-      else setDnoStatus('error')
+     if (found) { setDno(found); setDnoStatus('found') }      else setDnoStatus('error') 
     }, 500)
     return () => clearTimeout(postcodeTimer.current)
   }, [form.postcode])
@@ -72,6 +71,10 @@ export default function NewApplication({ setCurrentPage, demoMode }) {
       return
     }
     setLoading(true)
+    const { data: authData } = await supabase.auth.getUser()
+    const user = authData?.user
+   console.log('User:', user)
+    if (!user) { alert('You must be logged in to save an application.'); return }
     const { error } = await supabase
       .from('applications')
       .insert([{
@@ -79,6 +82,7 @@ export default function NewApplication({ setCurrentPage, demoMode }) {
         dno_name: dno.name,
         dno_region: dno.region,
         dno_emergency: dno.emergency,
+        user_id: user.id,
       }])
     setLoading(false)
     if (!error) {

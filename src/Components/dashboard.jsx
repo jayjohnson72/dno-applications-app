@@ -70,9 +70,11 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
     setLoading(true)
     setError(null)
     if (demoMode) { setApplications(demoApplications || []); setLoading(false); return }
+   const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase
       .from("applications")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
     if (error) { setError(error.message) } else { setApplications(data) }
     setLoading(false)
