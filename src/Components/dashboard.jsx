@@ -19,10 +19,10 @@ const typeLabels = {
 }
 
 const DNO_PORTALS = {
-  "Electricity North West": "https://www.enwl.co.uk/connections/connection-enquiries/",
+  "Electricity North West": "https://www.enwl.co.uk/get-connected/",
   "Northern Powergrid": "https://www.northernpowergrid.com/connections",
-  "UK Power Networks": "https://www.ukpowernetworks.co.uk/connections/connections-enquiry-form",
-  "Western Power Distribution": "https://www.westernpower.co.uk/connections/i-want-to-connect/connections-enquiry",
+  "UK Power Networks": "https://www.ukpowernetworks.co.uk/connections",
+  "Western Power Distribution": "https://www.nationalgrid.com/electricity-distribution/connections",
   "SSEN Distribution": "https://www.ssen.co.uk/connections/",
   "SSEN Transmission": "https://www.ssen-transmission.co.uk/connections/",
   "SP Energy Networks": "https://www.spenergynetworks.co.uk/pages/connections.aspx",
