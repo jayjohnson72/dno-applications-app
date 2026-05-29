@@ -3,6 +3,7 @@ import { supabase } from "../supabase"
 import EditApplication from "./EditApplication"
 import jsPDF from "jspdf"
 import LoadCalculator from "./LoadCalculator"
+import ApplicationTimeline from "./ApplicationTimeline"
 
 const statusColours = {
   draft: "bg-gray-100 text-gray-700",
@@ -38,6 +39,7 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
   const [filterStatus, setFilterStatus] = useState("all")
   const [submitting, setSubmitting] = useState(null)
   const [loadCalc, setLoadCalc] = useState(null)
+  const [timeline, setTimeline] = useState(null)
 
   function downloadPDF(app) {
     const doc = new jsPDF()
@@ -70,11 +72,12 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
     setLoading(true)
     setError(null)
     if (demoMode) { setApplications(demoApplications || []); setLoading(false); return }
-   const { data: { user } } = await supabase.auth.getUser()
+    const { data: authData } = await supabase.auth.getUser()
+    const user = authData?.user
     const { data, error } = await supabase
       .from("applications")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", user?.id)
       .order("created_at", { ascending: false })
     if (error) { setError(error.message) } else { setApplications(data) }
     setLoading(false)
@@ -110,6 +113,10 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
           onClose={() => setEditing(null)}
           onSaved={handleSaved}
         />
+      )}
+
+      {timeline && (
+        <ApplicationTimeline app={timeline} onClose={() => { setTimeline(null); fetchApplications() }} />
       )}
 
       {loadCalc && (
@@ -260,6 +267,10 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
                         <button onClick={() => setEditing(app)}
                           className="text-blue-600 hover:text-blue-800 font-medium text-xs px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-50 transition">
                           Edit
+                        </button>
+                        <button onClick={() => setTimeline(app)}
+                          className="text-teal-600 hover:text-teal-800 font-medium text-xs px-3 py-1 rounded-lg border border-teal-200 hover:bg-teal-50 transition">
+                          Timeline
                         </button>
                         <button onClick={() => setLoadCalc(app)}
                           className="text-orange-600 hover:text-orange-800 font-medium text-xs px-3 py-1 rounded-lg border border-orange-200 hover:bg-orange-50 transition">
