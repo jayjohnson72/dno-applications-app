@@ -4,6 +4,7 @@ import EditApplication from "./EditApplication"
 import jsPDF from "jspdf"
 import LoadCalculator from "./LoadCalculator"
 import ApplicationTimeline from "./ApplicationTimeline"
+import * as XLSX from "xlsx"
 
 const statusColours = {
   draft: "bg-gray-100 text-gray-700",
@@ -68,6 +69,36 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
     doc.save(`application-${app.customer_name.replace(/\s+/g, "-")}.pdf`)
   }
 
+  function exportToExcel() {
+    const rows = filtered.map(app => ({
+      "Customer Name": app.customer_name,
+      "Site Address": app.site_address,
+      "Postcode": app.postcode,
+      "MPAN": app.mpan || "",
+      "Application Type": typeLabels[app.type] || app.type,
+      "Status": app.status,
+      "DNO Name": app.dno_name || "",
+      "DNO Region": app.dno_region || "",
+      "DNO Emergency": app.dno_emergency || "",
+      "Date Created": new Date(app.created_at).toLocaleDateString("en-GB"),
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 22 },
+      { wch: 22 }, { wch: 12 }, { wch: 30 }, { wch: 20 },
+      { wch: 18 }, { wch: 14 },
+    ]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Applications")
+
+    const filename = `DNO-Applications-${new Date().toLocaleDateString("en-GB").replace(/\//g, "-")}.xlsx`
+    XLSX.writeFile(wb, filename)
+  }
+
   async function fetchApplications() {
     setLoading(true)
     setError(null)
@@ -108,11 +139,7 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
   return (
     <div>
       {editing && (
-        <EditApplication
-          application={editing}
-          onClose={() => setEditing(null)}
-          onSaved={handleSaved}
-        />
+        <EditApplication application={editing} onClose={() => setEditing(null)} onSaved={handleSaved} />
       )}
 
       {timeline && (
@@ -148,10 +175,8 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
               </div>
               <a
                 href={DNO_PORTALS[submitting.dno_name] || "https://www.google.com/search?q=" + encodeURIComponent(submitting.dno_name + " connection application")}
-                target="_blank"
-                rel="noreferrer"
-                className="block w-full text-center bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition"
-              >
+                target="_blank" rel="noreferrer"
+                className="block w-full text-center bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition">
                 Open DNO Portal
               </a>
               <p className="text-xs text-gray-400 text-center">Opens in a new tab — copy the details above into the portal form</p>
@@ -206,7 +231,7 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
         </div>
       ) : (
         <div>
-          <div className="flex gap-3 mb-4">
+          <div className="flex gap-3 mb-4 items-center flex-wrap">
             <select value={filterDno} onChange={e => setFilterDno(e.target.value)}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">All DNOs</option>
@@ -220,7 +245,14 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </select>
+            <div className="ml-auto">
+              <button onClick={exportToExcel} disabled={filtered.length === 0}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition font-medium text-sm disabled:opacity-50 flex items-center gap-2">
+                ⬇ Export to Excel ({filtered.length})
+              </button>
+            </div>
           </div>
+
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
