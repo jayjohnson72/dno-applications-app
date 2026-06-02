@@ -3,14 +3,21 @@ import { supabase } from './supabase'
 import Dashboard from './Components/dashboard'
 import NewApplication from './Components/NewApplication'
 import Auth from './Components/Auth'
+import CustomerPortal from './CustomerPortal'
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [dashboardKey, setDashboardKey] = useState(0)
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [customerToken, setCustomerToken] = useState(null)
 
   useEffect(() => {
+    // Check for customer portal token in URL
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (token) setCustomerToken(token)
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setAuthLoading(false)
@@ -28,6 +35,11 @@ export default function App() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
+  }
+
+  // Show customer portal if token in URL
+  if (customerToken) {
+    return <CustomerPortal token={customerToken} />
   }
 
   if (authLoading) {

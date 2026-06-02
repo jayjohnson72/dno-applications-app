@@ -312,6 +312,14 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
                           className="text-purple-600 hover:text-purple-800 font-medium text-xs px-3 py-1 rounded-lg border border-purple-200 hover:bg-purple-50 transition">
                           Submit
                         </button>
+                        <button onClick={() => {
+                          const url = `${window.location.origin}?token=${app.customer_token}`
+                          navigator.clipboard.writeText(url)
+                          alert('Customer link copied to clipboard!')
+                        }}
+                          className="text-pink-600 hover:text-pink-800 font-medium text-xs px-3 py-1 rounded-lg border border-pink-200 hover:bg-pink-50 transition">
+                          Share
+                        </button>
                       </div>
                     </td>
                   </tr>
