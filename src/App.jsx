@@ -183,12 +183,10 @@ export default function App() {
               className={`px-4 py-2 rounded-lg font-medium transition ${currentPage === 'new' ? 'bg-white text-blue-800' : 'text-white hover:bg-blue-700'}`}>
               New Application
             </button>
-            {!demoMode && (
-              <button onClick={() => { setDemoMode(true); setTourStep(0) }}
-                className="px-4 py-2 rounded-lg font-medium transition text-orange-300 hover:bg-blue-700">
-                Demo
-              </button>
-            )}
+            <button onClick={() => { setDemoMode(true); setTourStep(0) }}
+              className={`px-4 py-2 rounded-lg font-medium transition ${demoMode ? 'bg-orange-500 text-white' : 'text-orange-300 hover:bg-blue-700'}`}>
+              Demo
+            </button>
             {session && (
               <div className="flex items-center gap-3 ml-2 pl-3 border-l border-blue-600">
                 <span className="text-xs text-blue-200">{session.user.email}</span>
