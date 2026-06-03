@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { supabase } from "../supabase"
 import EditApplication from "./EditApplication"
 import jsPDF from "jspdf"
@@ -29,6 +29,53 @@ const DNO_PORTALS = {
   "SSEN Transmission": "https://www.ssen-transmission.co.uk/connections/",
   "SP Energy Networks": "https://www.spenergynetworks.co.uk/pages/connections.aspx",
   "SP Manweb": "https://www.spenergynetworks.co.uk/pages/connections.aspx",
+}
+
+
+function ActionMenu({ app, onPDF, onEdit, onTimeline, onLoadCalc, onSubmit, onShare }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const items = [
+    { label: 'Download PDF', icon: '📄', colour: 'text-green-700', action: onPDF },
+    { label: 'Edit Application', icon: '✏️', colour: 'text-blue-700', action: onEdit },
+    { label: 'Timeline & Notes', icon: '🕐', colour: 'text-teal-700', action: onTimeline },
+    { label: 'Load Calculator', icon: '⚡', colour: 'text-orange-700', action: onLoadCalc },
+    { label: 'Submit to DNO', icon: '📤', colour: 'text-purple-700', action: onSubmit },
+    { label: 'Share with Customer', icon: '🔗', colour: 'text-pink-700', action: onShare },
+  ]
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-blue-800 transition shadow-sm">
+        Actions
+        <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-20 overflow-hidden">
+          {items.map((item, i) => (
+            <button key={i} onClick={() => { item.action(); setOpen(false) }}
+              className={`w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition ${item.colour} ${i < items.length - 1 ? 'border-b border-gray-50' : ''}`}>
+              <span className="text-base">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Dashboard({ setCurrentPage, demoMode, demoApplications }) {
@@ -253,7 +300,7 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -291,36 +338,19 @@ export default function Dashboard({ setCurrentPage, demoMode, demoApplications }
                       {new Date(app.created_at).toLocaleDateString("en-GB")}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1 flex-wrap">
-                        <button onClick={() => downloadPDF(app)}
-                          className="text-green-600 hover:text-green-800 font-medium text-xs px-3 py-1 rounded-lg border border-green-200 hover:bg-green-50 transition">
-                          PDF
-                        </button>
-                        <button onClick={() => setEditing(app)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-xs px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-50 transition">
-                          Edit
-                        </button>
-                        <button onClick={() => setTimeline(app)}
-                          className="text-teal-600 hover:text-teal-800 font-medium text-xs px-3 py-1 rounded-lg border border-teal-200 hover:bg-teal-50 transition">
-                          Timeline
-                        </button>
-                        <button onClick={() => setLoadCalc(app)}
-                          className="text-orange-600 hover:text-orange-800 font-medium text-xs px-3 py-1 rounded-lg border border-orange-200 hover:bg-orange-50 transition">
-                          Load Calc
-                        </button>
-                        <button onClick={() => setSubmitting(app)}
-                          className="text-purple-600 hover:text-purple-800 font-medium text-xs px-3 py-1 rounded-lg border border-purple-200 hover:bg-purple-50 transition">
-                          Submit
-                        </button>
-                        <button onClick={() => {
+                      <ActionMenu
+                        app={app}
+                        onPDF={() => downloadPDF(app)}
+                        onEdit={() => setEditing(app)}
+                        onTimeline={() => setTimeline(app)}
+                        onLoadCalc={() => setLoadCalc(app)}
+                        onSubmit={() => setSubmitting(app)}
+                        onShare={() => {
                           const url = `${window.location.origin}?token=${app.customer_token}`
                           navigator.clipboard.writeText(url)
                           alert('Customer link copied to clipboard!')
                         }}
-                          className="text-pink-600 hover:text-pink-800 font-medium text-xs px-3 py-1 rounded-lg border border-pink-200 hover:bg-pink-50 transition">
-                          Share
-                        </button>
-                      </div>
+                      />
                     </td>
                   </tr>
                 ))}
