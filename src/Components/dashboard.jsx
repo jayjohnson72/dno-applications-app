@@ -6,6 +6,8 @@ import LoadCalculator from "./LoadCalculator";
 import ApplicationTimeline from "./ApplicationTimeline";
 import * as XLSX from "xlsx";
 
+const ENA_ENABLED = true;
+
 const statusColours = {
   draft: "bg-gray-100 text-gray-700",
   submitted: "bg-blue-100 text-blue-700",
@@ -33,6 +35,338 @@ const DNO_PORTALS = {
   "SP Manweb": "https://www.spenergynetworks.co.uk/pages/connections.aspx",
 };
 
+function buildENAPayload(app, profile, attachmentId) {
+  const addressParts = app.site_address.split(",");
+  const installer = {
+    name: profile?.full_name || "Installer",
+    companyName: profile?.company_name || "Installation Company",
+    installerNumber: profile?.installer_number || "",
+    mcsNumber: profile?.mcs_number || "",
+    phone: profile?.phone || "",
+    email: profile?.email || "",
+  };
+  const siteAddress = {
+    address: addressParts[0]?.trim() || app.site_address,
+    town: addressParts[1]?.trim() || "",
+    postcode: app.postcode,
+  };
+  const cutoutAttachment = { attachmentId, attachmentType: "CUT_OUT_IMAGE" };
+  if (app.type === "G98" || app.type === "G99") {
+    return {
+      applicationClass: "GENERATION_GENERAL",
+      lcts: ["SOLAR_PV"],
+      installer,
+      siteAddress,
+      mpan: app.mpan || undefined,
+      supplyDetails: { declaredVoltageAtConnectionPoint: "230 V" },
+      devicesToInstall: [
+        {
+          deviceType: "SOLAR_PV",
+          installedCapacityKw: app.type === "G98" ? 3.68 : 5,
+          exportLimitKw: app.type === "G98" ? 3.68 : 5,
+        },
+      ],
+      attachments: [cutoutAttachment],
+      customerName: app.customer_name,
+      customerAddress: siteAddress,
+    };
+  }
+  if (app.type === "EV") {
+    return {
+      applicationClass: "DEMAND_GENERAL",
+      lcts: ["EVCP_AC"],
+      installer,
+      siteAddress,
+      mpan: app.mpan || undefined,
+      supplyDetails: { declaredVoltageAtConnectionPoint: "230 V" },
+      devicesToInstall: [
+        { deviceType: "EVCP_AC", ratedCurrentAmps: 32, quantity: 1 },
+      ],
+      attachments: [cutoutAttachment],
+      customerName: app.customer_name,
+      customerAddress: siteAddress,
+    };
+  }
+  if (app.type === "HeatPump") {
+    return {
+      applicationClass: "DEMAND_GENERAL",
+      lcts: ["HP"],
+      installer,
+      siteAddress,
+      mpan: app.mpan || undefined,
+      supplyDetails: { declaredVoltageAtConnectionPoint: "230 V" },
+      devicesToInstall: [{ deviceType: "HP", ratedOutputKw: 8, quantity: 1 }],
+      attachments: [cutoutAttachment],
+      customerName: app.customer_name,
+      customerAddress: siteAddress,
+    };
+  }
+  throw new Error(`Unknown type: ${app.type}`);
+}
+
+async function fetchImageAsBase64(url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result.split(",")[1];
+      resolve({ base64, mimeType: blob.type });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function SubmitModal({ app, onClose }) {
+  const [stage, setStage] = useState("confirm");
+  const [enaResult, setEnaResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleENASubmit() {
+    if (!app.cutout_image_url) {
+      setStage("nophoto");
+      return;
+    }
+    setStage("submitting");
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+
+      // Convert image to base64
+      const { base64, mimeType } = await fetchImageAsBase64(
+        app.cutout_image_url,
+      );
+
+      // Upload image via Edge Function
+      const uploadRes = await supabase.functions.invoke("ena-submit", {
+        body: {
+          action: "upload-image",
+          imageBase64: base64,
+          imageMimeType: mimeType,
+        },
+      });
+      if (uploadRes.error)
+        throw new Error(`Image upload failed: ${uploadRes.error.message}`);
+      if (uploadRes.data?.error)
+        throw new Error(`Image upload failed: ${uploadRes.data.error}`);
+      const attachmentId = uploadRes.data.attachmentId;
+
+      // Submit application via Edge Function
+      const payload = buildENAPayload(
+        app,
+        { ...profile, email: user?.email },
+        attachmentId,
+      );
+      const submitRes = await supabase.functions.invoke("ena-submit", {
+        body: { action: "submit-application", payload },
+      });
+      if (submitRes.error)
+        throw new Error(`Submission failed: ${submitRes.error.message}`);
+      if (submitRes.data?.error)
+        throw new Error(`Submission failed: ${submitRes.data.error}`);
+      const data = submitRes.data;
+
+      await supabase
+        .from("applications")
+        .update({
+          ena_application_id: data.applicationId || data.id,
+          ena_status: data.status || "Awaiting Assessment",
+          status: "submitted",
+        })
+        .eq("id", app.id);
+
+      await supabase.from("application_timeline").insert([
+        {
+          application_id: app.id,
+          user_id: user?.id,
+          status: "ena_submitted",
+          note: `Submitted via ENA Connect Direct. Application ID: ${data.applicationId || data.id}. Status: ${data.status || "Awaiting Assessment"}`,
+          note_only: false,
+        },
+      ]);
+
+      setEnaResult({
+        applicationId: data.applicationId || data.id,
+        status: data.status || "Awaiting Assessment",
+      });
+      setStage("success");
+    } catch (e) {
+      setErrorMsg(e.message);
+      setStage("error");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-800">Submit to DNO</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          {stage === "confirm" && (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <p className="text-xs text-gray-500 mb-0.5">Submitting to</p>
+                <p className="text-sm font-semibold text-blue-800">
+                  {app.dno_name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {app.dno_region} · {app.dno_emergency}
+                </p>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-1 text-sm">
+                <p>
+                  <span className="font-medium">Customer:</span>{" "}
+                  {app.customer_name}
+                </p>
+                <p>
+                  <span className="font-medium">Address:</span>{" "}
+                  {app.site_address}
+                </p>
+                <p>
+                  <span className="font-medium">Postcode:</span> {app.postcode}
+                </p>
+                <p>
+                  <span className="font-medium">MPAN:</span>{" "}
+                  {app.mpan || "Not provided"}
+                </p>
+                <p>
+                  <span className="font-medium">Type:</span> {app.type}
+                </p>
+              </div>
+              {!app.cutout_image_url && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-700">
+                  ⚠️ No cut-out image — required for ENA Connect Direct. You can
+                  still submit manually.
+                </div>
+              )}
+              {ENA_ENABLED && app.cutout_image_url && (
+                <button
+                  onClick={handleENASubmit}
+                  className="w-full bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition"
+                >
+                  🔗 Submit via ENA Connect Direct (Sandbox)
+                </button>
+              )}
+              <a
+                href={
+                  DNO_PORTALS[app.dno_name] ||
+                  "https://www.google.com/search?q=" +
+                    encodeURIComponent(app.dno_name + " connection application")
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="block w-full text-center bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition"
+              >
+                Open DNO Portal Manually
+              </a>
+            </>
+          )}
+          {stage === "submitting" && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">⚙️</div>
+              <p className="text-gray-700 font-medium">
+                Submitting to ENA Connect Direct...
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                Uploading cut-out image and sending application
+              </p>
+            </div>
+          )}
+          {stage === "success" && enaResult && (
+            <div className="text-center py-4">
+              <div className="text-5xl mb-4">✅</div>
+              <h3 className="text-lg font-bold text-green-700 mb-2">
+                Submitted Successfully!
+              </h3>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left space-y-2 text-sm">
+                <p>
+                  <span className="font-medium">ENA Application ID:</span>{" "}
+                  {enaResult.applicationId}
+                </p>
+                <p>
+                  <span className="font-medium">Status:</span>{" "}
+                  {enaResult.status}
+                </p>
+                <p className="text-gray-500 text-xs mt-2">
+                  Timeline updated automatically. ENA will assess and update the
+                  status shortly.
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="mt-4 w-full bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition"
+              >
+                Close
+              </button>
+            </div>
+          )}
+          {stage === "error" && (
+            <>
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <p className="text-sm font-medium text-red-700 mb-1">
+                  ENA submission failed
+                </p>
+                <p className="text-xs text-red-500">{errorMsg}</p>
+              </div>
+              <a
+                href={
+                  DNO_PORTALS[app.dno_name] ||
+                  "https://www.google.com/search?q=" +
+                    encodeURIComponent(app.dno_name + " connection application")
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="block w-full text-center bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition"
+              >
+                Open DNO Portal Manually
+              </a>
+              <button
+                onClick={() => setStage("confirm")}
+                className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition text-sm"
+              >
+                Try Again
+              </button>
+            </>
+          )}
+          {stage === "nophoto" && (
+            <>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-700">
+                ⚠️ No cut-out image found. Please edit the application to add a
+                cut-out photo before submitting via ENA Connect Direct.
+              </div>
+              <a
+                href={
+                  DNO_PORTALS[app.dno_name] ||
+                  "https://www.google.com/search?q=" +
+                    encodeURIComponent(app.dno_name + " connection application")
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="block w-full text-center bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition"
+              >
+                Open DNO Portal Manually
+              </a>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActionMenu({
   app,
   onPDF,
@@ -44,7 +378,6 @@ function ActionMenu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
   useEffect(() => {
     function handleClick(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -52,7 +385,6 @@ function ActionMenu({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
-
   const items = [
     {
       label: "Download PDF",
@@ -91,7 +423,6 @@ function ActionMenu({
       action: onShare,
     },
   ];
-
   return (
     <div className="relative" ref={ref}>
       <button
@@ -191,12 +522,11 @@ export default function Dashboard({
       "DNO Name": app.dno_name || "",
       "DNO Region": app.dno_region || "",
       "DNO Emergency": app.dno_emergency || "",
+      "ENA Application ID": app.ena_application_id || "",
+      "ENA Status": app.ena_status || "",
       "Date Created": new Date(app.created_at).toLocaleDateString("en-GB"),
     }));
-
     const ws = XLSX.utils.json_to_sheet(rows);
-
-    // Set column widths
     ws["!cols"] = [
       { wch: 25 },
       { wch: 35 },
@@ -207,14 +537,16 @@ export default function Dashboard({
       { wch: 30 },
       { wch: 20 },
       { wch: 18 },
+      { wch: 20 },
+      { wch: 20 },
       { wch: 14 },
     ];
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Applications");
-
-    const filename = `DNO-Applications-${new Date().toLocaleDateString("en-GB").replace(/\//g, "-")}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(
+      wb,
+      `DNO-Applications-${new Date().toLocaleDateString("en-GB").replace(/\//g, "-")}.xlsx`,
+    );
   }
 
   async function fetchApplications() {
@@ -243,7 +575,6 @@ export default function Dashboard({
   useEffect(() => {
     fetchApplications();
   }, []);
-
   function handleSaved() {
     setEditing(null);
     fetchApplications();
@@ -252,13 +583,11 @@ export default function Dashboard({
   const dnoOptions = [
     ...new Set(applications.filter((a) => a.dno_name).map((a) => a.dno_name)),
   ].sort();
-
   const filtered = applications.filter((a) => {
     const dnoMatch = filterDno === "all" || a.dno_name === filterDno;
     const statusMatch = filterStatus === "all" || a.status === filterStatus;
     return dnoMatch && statusMatch;
   });
-
   const counts = {
     total: applications.length,
     draft: applications.filter((a) => a.status === "draft").length,
@@ -275,7 +604,6 @@ export default function Dashboard({
           onSaved={handleSaved}
         />
       )}
-
       {timeline && (
         <ApplicationTimeline
           app={timeline}
@@ -285,85 +613,17 @@ export default function Dashboard({
           }}
         />
       )}
-
       {loadCalc && (
         <LoadCalculator app={loadCalc} onClose={() => setLoadCalc(null)} />
       )}
-
       {submitting && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-800">Submit to DNO</h2>
-              <button
-                onClick={() => setSubmitting(null)}
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <p className="text-xs text-gray-500 mb-0.5">Submitting to</p>
-                <p className="text-sm font-semibold text-blue-800">
-                  {submitting.dno_name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {submitting.dno_region} · {submitting.dno_emergency}
-                </p>
-              </div>
-              <p className="text-sm text-gray-600">
-                Copy the details below and paste them into the DNO portal:
-              </p>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-1 text-sm">
-                <p>
-                  <span className="font-medium">Customer:</span>{" "}
-                  {submitting.customer_name}
-                </p>
-                <p>
-                  <span className="font-medium">Address:</span>{" "}
-                  {submitting.site_address}
-                </p>
-                <p>
-                  <span className="font-medium">Postcode:</span>{" "}
-                  {submitting.postcode}
-                </p>
-                <p>
-                  <span className="font-medium">MPAN:</span>{" "}
-                  {submitting.mpan || "Not provided"}
-                </p>
-                <p>
-                  <span className="font-medium">Type:</span> {submitting.type}
-                </p>
-                <p>
-                  <span className="font-medium">DNO:</span>{" "}
-                  {submitting.dno_name}
-                </p>
-                <p>
-                  <span className="font-medium">Region:</span>{" "}
-                  {submitting.dno_region}
-                </p>
-              </div>
-              <a
-                href={
-                  DNO_PORTALS[submitting.dno_name] ||
-                  "https://www.google.com/search?q=" +
-                    encodeURIComponent(
-                      submitting.dno_name + " connection application",
-                    )
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="block w-full text-center bg-blue-700 text-white py-2 rounded-lg font-medium hover:bg-blue-800 transition"
-              >
-                Open DNO Portal
-              </a>
-              <p className="text-xs text-gray-400 text-center">
-                Opens in a new tab — copy the details above into the portal form
-              </p>
-            </div>
-          </div>
-        </div>
+        <SubmitModal
+          app={submitting}
+          onClose={() => {
+            setSubmitting(null);
+            fetchApplications();
+          }}
+        />
       )}
 
       <div className="flex items-center justify-between mb-8">
@@ -471,7 +731,6 @@ export default function Dashboard({
               </button>
             </div>
           </div>
-
           <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -529,11 +788,18 @@ export default function Dashboard({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${statusColours[app.status] || "bg-gray-100 text-gray-700"}`}
-                      >
-                        {app.status}
-                      </span>
+                      <div>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${statusColours[app.status] || "bg-gray-100 text-gray-700"}`}
+                        >
+                          {app.status}
+                        </span>
+                        {app.ena_application_id && (
+                          <p className="text-xs text-purple-600 mt-0.5">
+                            ENA: {app.ena_status || "Submitted"}
+                          </p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {new Date(app.created_at).toLocaleDateString("en-GB")}
