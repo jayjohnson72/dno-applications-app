@@ -237,8 +237,8 @@ export default function App() {
       {/* ENA Connect Direct status banner */}
       {!demoMode && (
         <div className="px-6 py-1.5 text-xs text-center font-medium bg-green-600 text-white">
-          🟢 ENA Connect Direct — Sandbox active. Submissions will be sent to
-          ENA test environment.
+          🟢 ENA Connect Direct — Sandbox & Live available. Select environment
+          when submitting.
         </div>
       )}
 
