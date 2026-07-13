@@ -46,6 +46,7 @@ export default function CommissioningForm({ app, onClose }) {
 
   const isG99 = app.type === "G99";
   const env = enaEnv === "live" ? LIVE : SANDBOX;
+  const isDemo = app.id?.startsWith("demo-");
 
   function handleFileChange(e) {
     const file = e.target.files[0];
@@ -238,7 +239,27 @@ export default function CommissioningForm({ app, onClose }) {
         </div>
 
         <div className="p-6 space-y-4">
-          {stage === "form" && (
+          {isDemo && (
+            <div className="text-center py-6">
+              <div className="text-4xl mb-4">🎭</div>
+              <h3 className="text-lg font-bold text-gray-700 mb-2">
+                Demo Mode
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                The commissioning form is not available in demo mode. Create a
+                real application and submit it via ENA Connect Direct to use
+                this feature.
+              </p>
+              <button
+                onClick={onClose}
+                className="bg-blue-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-800 transition"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {!isDemo && stage === "form" && (
             <>
               {/* Environment toggle */}
               <div className="flex gap-2">
@@ -366,7 +387,7 @@ export default function CommissioningForm({ app, onClose }) {
             </>
           )}
 
-          {stage === "submitting" && (
+          {!isDemo && stage === "submitting" && (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">⚙️</div>
               <p className="text-gray-700 font-medium">
@@ -376,7 +397,7 @@ export default function CommissioningForm({ app, onClose }) {
             </div>
           )}
 
-          {stage === "success" && (
+          {!isDemo && stage === "success" && (
             <div className="text-center py-4">
               <div className="text-5xl mb-4">✅</div>
               <h3 className="text-lg font-bold text-green-700 mb-2">
@@ -404,7 +425,7 @@ export default function CommissioningForm({ app, onClose }) {
             </div>
           )}
 
-          {stage === "error" && (
+          {!isDemo && stage === "error" && (
             <>
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                 <p className="text-sm font-medium text-red-700 mb-1">
