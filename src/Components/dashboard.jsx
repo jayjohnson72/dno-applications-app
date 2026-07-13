@@ -71,6 +71,7 @@ function SubmitModal({ app, onClose }) {
   const [stage, setStage] = useState("confirm");
   const [enaResult, setEnaResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [enaEnv, setEnaEnv] = useState("sandbox");
 
   async function handleENASubmit() {
     if (!app.cutout_image_url) {
