@@ -70,7 +70,6 @@ function SubmitModal({ app, onClose }) {
   const [stage, setStage] = useState("confirm");
   const [enaResult, setEnaResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [enaEnv, setEnaEnv] = useState("sandbox");
 
   async function handleENASubmit() {
     if (!app.cutout_image_url) {
@@ -98,7 +97,6 @@ function SubmitModal({ app, onClose }) {
           action: "upload-image",
           imageBase64: base64,
           imageMimeType: mimeType,
-          environment: enaEnv,
         },
       });
       if (uploadRes.error)
@@ -116,7 +114,6 @@ function SubmitModal({ app, onClose }) {
           app: app,
           profile: { ...profile, email: user?.email },
           attachmentId: attachmentId,
-          environment: enaEnv,
         },
       });
       if (submitRes.error)
@@ -130,6 +127,7 @@ function SubmitModal({ app, onClose }) {
         .update({
           ena_application_id: data.applicationId || data.id,
           ena_status: data.status || "Awaiting Assessment",
+          ena_environment: enaEnv,
           status: "submitted",
         })
         .eq("id", app.id);
@@ -206,41 +204,12 @@ function SubmitModal({ app, onClose }) {
                 </div>
               )}
               {ENA_ENABLED && app.cutout_image_url && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEnaEnv("sandbox")}
-                      className={`flex-1 py-2 text-xs font-medium rounded-lg border transition ${enaEnv === "sandbox" ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-300"}`}
-                    >
-                      🧪 Sandbox
-                    </button>
-                    <button
-                      onClick={() => setEnaEnv("live")}
-                      className={`flex-1 py-2 text-xs font-medium rounded-lg border transition ${enaEnv === "live" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-600 border-gray-300"}`}
-                    >
-                      🟢 Live
-                    </button>
-                  </div>
-                  {enaEnv === "live" && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">
-                      ⚠️ Live mode — this will submit a real application to the
-                      DNO
-                    </div>
-                  )}
-                  {enaEnv === "sandbox" && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700">
-                      🧪 Sandbox mode — test submission, no real application
-                      will be created
-                    </div>
-                  )}
-                  <button
-                    onClick={handleENASubmit}
-                    className={`w-full py-2 rounded-lg font-medium transition text-white ${enaEnv === "live" ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"}`}
-                  >
-                    🔗 Submit via ENA Connect Direct (
-                    {enaEnv === "live" ? "Live" : "Sandbox"})
-                  </button>
-                </div>
+                <button
+                  onClick={handleENASubmit}
+                  className="w-full bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition"
+                >
+                  🔗 Submit via ENA Connect Direct (Sandbox)
+                </button>
               )}
               <a
                 href={
