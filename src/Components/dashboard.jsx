@@ -4,6 +4,7 @@ import EditApplication from "./EditApplication";
 import jsPDF from "jspdf";
 import LoadCalculator from "./LoadCalculator";
 import ApplicationTimeline from "./ApplicationTimeline";
+import CommissioningForm from "./CommissioningForm";
 import * as XLSX from "xlsx";
 
 const ENA_ENABLED = true;
@@ -325,6 +326,7 @@ function ActionMenu({
   onTimeline,
   onLoadCalc,
   onSubmit,
+  onCommission,
   onShare,
 }) {
   const [open, setOpen] = useState(false);
@@ -366,6 +368,12 @@ function ActionMenu({
       icon: "📤",
       colour: "text-purple-700",
       action: onSubmit,
+    },
+    {
+      label: "Commission",
+      icon: "🔌",
+      colour: "text-indigo-700",
+      action: onCommission,
     },
     {
       label: "Share with Customer",
@@ -430,6 +438,7 @@ export default function Dashboard({
   const [submitting, setSubmitting] = useState(null);
   const [loadCalc, setLoadCalc] = useState(null);
   const [timeline, setTimeline] = useState(null);
+  const [commissioning, setCommissioning] = useState(null);
 
   function downloadPDF(app) {
     const doc = new jsPDF();
@@ -566,6 +575,15 @@ export default function Dashboard({
       )}
       {loadCalc && (
         <LoadCalculator app={loadCalc} onClose={() => setLoadCalc(null)} />
+      )}
+      {commissioning && (
+        <CommissioningForm
+          app={commissioning}
+          onClose={() => {
+            setCommissioning(null);
+            fetchApplications();
+          }}
+        />
       )}
       {submitting && (
         <SubmitModal
@@ -763,6 +781,7 @@ export default function Dashboard({
                         onTimeline={() => setTimeline(app)}
                         onLoadCalc={() => setLoadCalc(app)}
                         onSubmit={() => setSubmitting(app)}
+                        onCommission={() => setCommissioning(app)}
                         onShare={() => {
                           const url = `${window.location.origin}?token=${app.customer_token}`;
                           navigator.clipboard.writeText(url);
